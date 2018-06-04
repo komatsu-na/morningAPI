@@ -1,73 +1,116 @@
 const express = require('express');
-const request = require("request");
+//const request = require("request");
+const request = require('sync-request');
 const app = express();
 var util = require('util');
 
 const port = 3000;
-var result;
+var fortune;
+var weather;
 
 // 現在日時を取得する
 var now = new Date();
-var nowYear = now.getYear();
-var nowMonths = now.getMonth() + 1;
-var nowDate = now.getDate();
-var date = 2018 + '/0' + 6 + '/0' + 1;
+var nowYear = now.getFullYear();
+var nowMonths = ('0' + (now.getMonth() + 1)).slice(-2);
+var nowDay = ('0' + now.getDate()).slice(-2);
+var date = nowYear + '/' + nowMonths + '/' + nowDay;
 
 function callFortuneAPI() {
-  request({
-    url: "http://api.jugemkey.jp/api/horoscope/free/2018/06/01",
-    method: 'GET',
-    json:true
-  }, function (err, res, body) {
-    if(!err && res.statusCode == 200) {
-      console.log(body.horoscope[date][8].content);
-      result = body.horoscope[date][8].content;
-      callKanaAPI(result);
-    }
-  });
+  var res = request('GET', "http://api.jugemkey.jp/api/horoscope/free/" + date);
+  var json = JSON.parse(res.getBody('utf8'));
+  var content = json.horoscope[date][8].content;
+  return callKanaAPI(content);
+  // request({
+  //   url: "http://api.jugemkey.jp/api/horoscope/free/" + date,
+  //   method: 'GET',
+  //   json:true
+  // }, function (err, res, body) {
+  //   if(!err && res.statusCode == 200) {
+  //     var content = body.horoscope[date][8].content;
+  //     callKanaAPI(content);
+  //   }
+  // });
+}
+
+function callForecastAPI() {
+  var res = request('GET', 'http://weather.livedoor.com/forecast/webservice/json/v1?city=130010');
+  var json = JSON.parse(res.getBody('utf8'));
+  var telop = json.forecasts[0].telop;
+  return callKanaAPI(telop);
+
+  // request({
+  //   url: 'http://weather.livedoor.com/forecast/webservice/json/v1?city=130010',
+  //   method: 'GET',
+  //   json: true
+  // }, function(err, res, body) {
+  //   callKanaAPI(body.forecasts[0].telop)
+  //   console.log(body.forecasts[1].telop);
+  // })
 }
 
 function callKanaAPI(sentence) {
-  request({
-    url: 'https://labs.goo.ne.jp/api/hiragana',
-    method: 'POST',
+  var res = request('POST', 'https://labs.goo.ne.jp/api/hiragana', {
     headers: {
       'Content-Type': `application/x-www-form-urlencoded`,
       'Content-Type':'application/json'
     },
-    json:true,
-    form: {
+    json: {
       app_id:'',
       sentence:sentence,
       output_type:'katakana'
     }
-  }, function(err, res, body) {
-    if(!err && res.statusCode == 200) {
-      console.log(body.converted);
-      callRomeAPI(body.converted);
-    }
   });
+  var json = JSON.parse(res.getBody('utf8'));
+  var kana = json.converted;
+  return callRomeAPI(kana);
+  // request({
+  //   url: 'https://labs.goo.ne.jp/api/hiragana',
+  //   method: 'POST',
+  //   headers: {
+  //     'Content-Type': `application/x-www-form-urlencoded`,
+  //     'Content-Type':'application/json'
+  //   },
+  //   json:true,
+  //   form: {
+  //     app_id:'',
+  //     sentence:sentence,
+  //     output_type:'katakana'
+  //   }
+  // }, function(err, res, body) {
+  //   if(!err && res.statusCode == 200) {
+  //     //console.log(body.converted);
+  //     callRomeAPI(body.converted);
+  //   }
+  // });
 }
 
 function callRomeAPI(sentence) {
   var url = 'https://green.adam.ne.jp/roomazi/cgi-bin/api.cgi?yomi=' + encodeURIComponent(sentence) + '&cmd=N&callback=mycallback'
-  console.log(url);
-  request({
-    url: url,
-    type: 'GET',
-  }, function(err, res, body){
-    eval(body);
-  });
+  var res = request('GET', url);
+  var callback = res.getBody('utf8');
+  return eval(callback);
+
+  // var url = 'https://green.adam.ne.jp/roomazi/cgi-bin/api.cgi?yomi=' + encodeURIComponent(sentence) + '&cmd=N&callback=mycallback'
+  // request({
+  //   url: url,
+  //   type: 'GET',
+  // }, function(err, res, body){
+  //   eval(body);
+  // });
 }
 
 function mycallback(json) {
-  console.log("aaaa");
-  console.log(json.roomazi);
-  result = json.roomazi;
+  return json.roomazi;
 }
 
 app.get('/', (req, res) => {
-  callFortuneAPI();
+  fortune = callFortuneAPI();
+  weather = callForecastAPI();
+  var result = {
+    'fortune': fortune,
+    'weather': weather
+  }
+  console.log(result);
   res.send(result);
 });
 
