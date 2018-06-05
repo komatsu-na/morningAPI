@@ -61,7 +61,7 @@ void loop() {
   int httpCode = http.GET();
 
   String result = "";
-
+  int dataSize;
   if (httpCode < 0) {
     result = http.errorToString(httpCode);
   } else if (http.getSize() < 0) {
@@ -72,7 +72,25 @@ void loop() {
 
   http.end();
   Serial.println(result);
-  atp.SyntheS(result);
+  StaticJsonBuffer<1000> jsonBuffer;
+  char json[result.length() + 1];
+  result.toCharArray(json, sizeof(json));
+  Serial.println(json);  
+  JsonObject&root = jsonBuffer.parseObject(json);
+  if (!root.success()) {
+    Serial.println("parseObject() failed");
+  }
+  const char* fortune = root["fortune"];
+  const char* weather = root["weather"];
+
+  Serial.println(weather);
+
+  atp.SetSpeed(80);
+  atp.Synthe(fortune);
+  atp.SetSpeed(100);
+  atp.Synthe(weather);
+  while(atp.IsBusy())
+  
   Serial.println();
   Serial.println("closing connection");
 }
