@@ -19,7 +19,7 @@ function callFortuneAPI() {
   var rank = json.horoscope[date][8].rank;
   var result = new Array(2);
   result[0] = callKanaAPI(content).replace(/。\s+/g, ".").replace(/\s+/g, "’").replace(/、’/g, " ");
-  result[1] = "kyo-no’unseiwa’dai" + rank + "idesu.";
+  result[1] = "kyo-no’unseiwa’dai,<NUMK VAL=" + rank + " COUNTER=i>desu.";
   return result;
 }
 
