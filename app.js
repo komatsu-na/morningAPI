@@ -16,29 +16,31 @@ function callFortuneAPI() {
   var res = request('GET', "http://api.jugemkey.jp/api/horoscope/free/" + date);
   var json = JSON.parse(res.getBody('utf8'));
   var content = json.horoscope[date][8].content;
-  return callKanaAPI(content);
+  var rank = json.horoscope[date][8].rank;
+  var result = new Array(2);
+  result[0] = callKanaAPI(content).replace(/。\s+/g, ".").replace(/\s+/g, "’").replace(/、’/g, " ");
+  result[1] = "kyo-no’unseiwa’dai" + rank + "idesu.";
+  return result;
 }
 
 function callForecastAPI() {
   var res = request('GET', 'http://weather.livedoor.com/forecast/webservice/json/v1?city=130010');
   var json = JSON.parse(res.getBody('utf8'));
-  var telop = json.forecasts[0].telop;
+  var telop = "kyo-no’tenkiwa," + callKanaAPI(json.forecasts[0].telop) + ",desu.";
   var tempMax;
   var tempMin;
-  console.log(json.forecasts[1].temperature);
-  console.log(json.forecasts[0].temperature);
   if (json.forecasts[0].temperature.max != null) {
-    tempMax = json.forecasts[0].temperature.max.celsius + "dodesu.";
+    tempMax = "saiko-kionwa," + json.forecasts[0].temperature.max.celsius + "dodesu.";
   } else {
-    tempMax = "wakarimasenn.";
+    tempMax = "saiko-kionwa,wakarimasenn.";
   }
   if (json.forecasts[0].temperature.min != null) {
-    tempMin = json.forecasts[0].temperature.min.celsius + "dodesu.";
+    tempMin = "saite-kionwa," + json.forecasts[0].temperature.min.celsius + "dodesu.";
   } else {
-    tempMin = "wakarimasenn.";
+    tempMin = "saite-kionwa,wakarimasenn.";
   }
   var result = new Array(3);
-  result[0] = callKanaAPI(telop);
+  result[0] = telop;
   result[1] = tempMax;
   result[2] = tempMin;
   console.log(result);
@@ -74,10 +76,11 @@ function mycallback(json) {
 }
 
 app.get('/', (req, res) => {
-  var fortune = callFortuneAPI().replace(/。\s+/g, ".").replace(/\s+/g, "’").replace(/、’/g, " ");
+  var fortune = callFortuneAPI();
   var weather = callForecastAPI();
   var result = {
-    'fortune': fortune,
+    'fortune': fortune[0],
+    'rank': fortune[1],
     'weather': weather[0],
     'tempMax': weather[1],
     'tempMin': weather[2]
