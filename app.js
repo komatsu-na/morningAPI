@@ -1,12 +1,9 @@
 const express = require('express');
-//const request = require("request");
 const request = require('sync-request');
 const app = express();
 var util = require('util');
 
 const port = 3000;
-var fortune;
-var weather;
 
 // 現在日時を取得する
 var now = new Date();
@@ -20,32 +17,32 @@ function callFortuneAPI() {
   var json = JSON.parse(res.getBody('utf8'));
   var content = json.horoscope[date][8].content;
   return callKanaAPI(content);
-  // request({
-  //   url: "http://api.jugemkey.jp/api/horoscope/free/" + date,
-  //   method: 'GET',
-  //   json:true
-  // }, function (err, res, body) {
-  //   if(!err && res.statusCode == 200) {
-  //     var content = body.horoscope[date][8].content;
-  //     callKanaAPI(content);
-  //   }
-  // });
 }
 
 function callForecastAPI() {
   var res = request('GET', 'http://weather.livedoor.com/forecast/webservice/json/v1?city=130010');
   var json = JSON.parse(res.getBody('utf8'));
   var telop = json.forecasts[0].telop;
-  return callKanaAPI(telop);
-
-  // request({
-  //   url: 'http://weather.livedoor.com/forecast/webservice/json/v1?city=130010',
-  //   method: 'GET',
-  //   json: true
-  // }, function(err, res, body) {
-  //   callKanaAPI(body.forecasts[0].telop)
-  //   console.log(body.forecasts[1].telop);
-  // })
+  var tempMax;
+  var tempMin;
+  console.log(json.forecasts[1].temperature);
+  console.log(json.forecasts[0].temperature);
+  if (json.forecasts[0].temperature.max != null) {
+    tempMax = json.forecasts[0].temperature.max.celsius + "dodesu.";
+  } else {
+    tempMax = "wakarimasenn.";
+  }
+  if (json.forecasts[0].temperature.min != null) {
+    tempMin = json.forecasts[0].temperature.min.celsius + "dodesu.";
+  } else {
+    tempMin = "wakarimasenn.";
+  }
+  var result = new Array(3);
+  result[0] = callKanaAPI(telop);
+  result[1] = tempMax;
+  result[2] = tempMin;
+  console.log(result);
+  return result;
 }
 
 function callKanaAPI(sentence) {
@@ -63,25 +60,6 @@ function callKanaAPI(sentence) {
   var json = JSON.parse(res.getBody('utf8'));
   var kana = json.converted;
   return callRomeAPI(kana);
-  // request({
-  //   url: 'https://labs.goo.ne.jp/api/hiragana',
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': `application/x-www-form-urlencoded`,
-  //     'Content-Type':'application/json'
-  //   },
-  //   json:true,
-  //   form: {
-  //     app_id:'',
-  //     sentence:sentence,
-  //     output_type:'katakana'
-  //   }
-  // }, function(err, res, body) {
-  //   if(!err && res.statusCode == 200) {
-  //     //console.log(body.converted);
-  //     callRomeAPI(body.converted);
-  //   }
-  // });
 }
 
 function callRomeAPI(sentence) {
@@ -89,14 +67,6 @@ function callRomeAPI(sentence) {
   var res = request('GET', url);
   var callback = res.getBody('utf8');
   return eval(callback);
-
-  // var url = 'https://green.adam.ne.jp/roomazi/cgi-bin/api.cgi?yomi=' + encodeURIComponent(sentence) + '&cmd=N&callback=mycallback'
-  // request({
-  //   url: url,
-  //   type: 'GET',
-  // }, function(err, res, body){
-  //   eval(body);
-  // });
 }
 
 function mycallback(json) {
@@ -104,11 +74,13 @@ function mycallback(json) {
 }
 
 app.get('/', (req, res) => {
-  fortune = callFortuneAPI();
-  weather = callForecastAPI();
+  var fortune = callFortuneAPI().replace(/。\s+/g, ".").replace(/\s+/g, "’").replace(/、’/g, " ");
+  var weather = callForecastAPI();
   var result = {
     'fortune': fortune,
-    'weather': weather
+    'weather': weather[0],
+    'tempMax': weather[1],
+    'tempMin': weather[2]
   }
   console.log(result);
   res.send(result);
